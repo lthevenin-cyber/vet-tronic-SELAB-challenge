@@ -1,3 +1,14 @@
-# Vet'Tronic SELAB
+# Vet'Tronic SELAB Challenge
 
-Initialisation du depot. L'application complete sera ajoutee au commit suivant.
+Application Next.js prete pour Vercel avec logo Vet'Tronic, parcours joueur, mode offline local, admin local et PWA.
+
+## Tester localement
+
+```bash
+npm install
+npm run dev
+```
+
+## Deployer sur Vercel
+
+Importer ce depot dans Vercel, puis deployer avec la configuration Next.js par defaut.
