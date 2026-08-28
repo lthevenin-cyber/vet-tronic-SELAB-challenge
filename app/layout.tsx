@@ -18,10 +18,9 @@ const animalImageFix = `
   };
   function fallback(label){return 'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 520"><rect width="800" height="520" fill="#ecf7ef"/><circle cx="400" cy="210" r="105" fill="#66bb89"/><text x="400" y="390" text-anchor="middle" font-size="44" font-family="Arial" font-weight="700" fill="#0f766e">'+(label||'Photo animal')+'</text></svg>')}
   function speciesFor(img){var alt=img.getAttribute('alt')||''; return Object.keys(images).find(function(k){return alt.indexOf(k)>-1 || img.src.indexOf(k)>-1})}
-  function fix(){document.querySelectorAll('img').forEach(function(img){var sp=speciesFor(img); if(sp && (img.src.indexOf('wikimedia.org')>-1 || img.naturalWidth===0)){img.src=images[sp]} img.onerror=function(){img.onerror=null;img.src=fallback(img.alt)}})}
+  function fix(){document.querySelectorAll('img').forEach(function(img){var sp=speciesFor(img); if(!sp)return; img.onerror=function(){img.onerror=null;img.src=fallback(img.alt)}; if(img.src.indexOf('wikimedia.org')>-1 && img.src!==images[sp]) img.src=images[sp];})}
   document.addEventListener('DOMContentLoaded',fix);
   window.addEventListener('load',fix);
-  setInterval(fix,1200);
   new MutationObserver(fix).observe(document.documentElement,{childList:true,subtree:true,attributes:true,attributeFilter:['src','alt']});
 })();`;
 
