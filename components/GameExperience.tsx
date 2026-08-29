@@ -135,6 +135,7 @@ export default function GameExperience({ gameId, title, mission, onFinish }: Gam
     sound(nextStage >= meta.steps ? "finish" : "ok");
     window.setTimeout(() => setPopup(null), 650);
     if (nextStage >= meta.steps) {
+      setStage(nextStage);
       setRunning(false);
       setCompleted(true);
     } else {
@@ -162,7 +163,7 @@ export default function GameExperience({ gameId, title, mission, onFinish }: Gam
         <GameHUD title={title} score={score} time={timeLeft} progress={stage} total={meta.steps} combo={combo} objective={completed ? "Mission terminee" : meta.objectives[stage]} soundOn={soundOn} toggleSound={() => setSoundOn((value) => !value)} />
         <div className="game-mission"><span>MISSION</span><p>{mission}</p></div>
         <div key={stage} className={`game-stage ${popup && popup < 0 ? "shake" : ""}`}>
-          <GameStage gameId={gameId} stage={stage} success={success} error={error} />
+          <GameStage gameId={gameId} stage={Math.min(stage, meta.steps - 1)} success={success} error={error} />
           <aside className="feedback-rail" aria-live="polite">
             <div className="feedback-status"><span className="status-dot" />{feedback}</div>
             <FlowTracker current={stage} total={meta.steps} />
@@ -361,5 +362,4 @@ function TraceCounter({ value }: { value: number }) { return <div className="tra
 function ContactCounter({ selected }: { selected: string[] }) { const total = selected.includes("market") && selected.includes("truck") ? 17 : selected.includes("market") ? 12 : selected.includes("truck") ? 6 : selected.includes("farmC") ? 31 : 247; return <div className="contact-counter"><span>ANIMAUX A CONTROLER</span><strong>{total}</strong><p>247 → 93 → 31 → {total}</p></div>; }
 function TargetId() { return <div className="target-id"><span>PATIENT A TRAITER</span><strong>384 250 000 022 781</strong><p>Berger allemand male - rappel fictif</p></div>; }
 function PenRegistries() { return <div className="pen-registries"><h3>Registres ouverts</h3><Data label="Lagunes" value="018542 / 018543 / 018544" /><Data label="Traore" value="018601 / 018602 / 018603" /><Data label="Yao" value="018701 / 018702" /></div>; }
-
 
