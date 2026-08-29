@@ -24,6 +24,9 @@ export type DemoAnimal = {
 };
 export type Owner = { id: string; name: string; phone: string; city: string };
 export type Farm = { id: string; name: string; city: string; ownerId: string; registryIds: string[] };
+export type TransportRegistry = { id: string; date: string; from: string; to: string; animalIds: string[] };
+export type MarketRegistry = { id: string; name: string; city: string; date: string; pens: { id: string; animalIds: string[] }[] };
+export type DemoCase = { id: string; kind: "theft" | "sanitary"; openedAt: string; animalIds: string[]; status: string; relatedRefs: string[] };
 
 export const profiles: Profile[] = ["Eleveur", "Veterinaire", "Proprietaire animaux", "Professionnel animal", "Institution", "Etudiant", "Visiteur"];
 export const speciesList: Species[] = ["Bovins", "Ovins", "Caprins", "Porcins", "Chiens", "Chats", "Chevaux"];
@@ -59,6 +62,24 @@ export const farms: Farm[] = [
   { id: "farm_kouassi", name: "Ferme Kouassi", city: "Bouake", ownerId: "own_001", registryIds: ["384 250 000 018 327", "384 250 000 018 372"] },
   { id: "farm_sud", name: "Ferme du Sud", city: "San Pedro", ownerId: "own_008", registryIds: [] },
   { id: "farm_montagnes", name: "Ferme des Montagnes", city: "Man", ownerId: "own_006", registryIds: [] }
+];
+
+export const transports: TransportRegistry[] = [
+  { id: "TR-042", date: "08/08/2026", from: "Ferme N'Zi", to: "Marche de Bouake", animalIds: ["384 250 000 019 754", "384 250 000 018 542", "384 250 000 018 543"] },
+  { id: "TR-118", date: "09/08/2026", from: "Marche de Bouake", to: "Ferme Akissi", animalIds: ["384 250 000 019 754", "384 250 000 018 601", "384 250 000 018 602", "384 250 000 018 603", "384 250 000 018 701", "384 250 000 018 702"] },
+  { id: "TR-214", date: "28/08/2026", from: "Route Nord", to: "Marche B", animalIds: ["384 250 000 018 444", "384 250 000 018 455", "384 250 000 018 493"] },
+  { id: "TR-331", date: "21/08/2026", from: "Ferme du Nord", to: "Marche B", animalIds: ["384 250 000 018 771", "384 250 000 018 772", "384 250 000 018 773", "384 250 000 018 774", "384 250 000 018 601", "384 250 000 018 701"] }
+];
+
+export const markets: MarketRegistry[] = [
+  { id: "market_a", name: "Marche A", city: "Daloa", date: "28/08/2026", pens: [{ id: "A-1", animalIds: ["384 250 000 018 442", "384 250 000 018 454", "384 250 000 018 455"] }] },
+  { id: "market_b", name: "Marche B", city: "Bouake", date: "21/08/2026", pens: [{ id: "B-4", animalIds: ["384 250 000 018 771", "384 250 000 018 772", "384 250 000 018 773"] }, { id: "B-7", animalIds: ["384 250 000 018 601", "384 250 000 018 701"] }] },
+  { id: "market_bouake", name: "Marche de Bouake", city: "Bouake", date: "08/08/2026", pens: [{ id: "P-12", animalIds: ["384 250 000 019 754", "384 250 000 018 542", "384 250 000 018 543"] }] }
+];
+
+export const demoCases: DemoCase[] = [
+  { id: "V-2026-0041", kind: "theft", openedAt: "28/08/2026 06:45", animalIds: ["384 250 000 018 442", "384 250 000 018 443", "384 250 000 018 444", "384 250 000 018 445", "384 250 000 018 446"], status: "enquete en cours", relatedRefs: ["market_a", "TR-214", "market_b"] },
+  { id: "PS-08-026", kind: "sanitary", openedAt: "26/08/2026 09:20", animalIds: ["384 250 000 018 771", "384 250 000 018 772", "384 250 000 018 773"], status: "suspicion - donnees a verifier", relatedRefs: ["LOT-BOV-240826-B", "TR-331", "market_b"] }
 ];
 
 const breeds: Record<Species, string[]> = {
@@ -99,3 +120,4 @@ export const featuredAnimals: Record<string, DemoAnimal> = {
 
 export function ownerOf(a: DemoAnimal) { return owners.find((o) => o.id === a.ownerId); }
 export function farmOf(a: DemoAnimal) { return farms.find((f) => f.id === a.farmId); }
+
