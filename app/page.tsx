@@ -2,13 +2,14 @@
 
 import { useEffect, useMemo, useState, type ReactNode, type SyntheticEvent } from "react";
 import { demoAnimals, farms, featuredAnimals, farmOf, ownerOf, owners, profiles, speciesImages, speciesList, type DemoAnimal, type Profile, type Species } from "../lib/demo-database";
+import GameExperience, { type PriorityGameId } from "../components/GameExperience";
 
 type Screen = "home" | "form" | "intro" | "game" | "reward" | "admin";
 type Tab = "dashboard" | "leads" | "games" | "lots" | "data";
 type Gift = { id: string; name: string; stock: number; threshold: number; active: boolean };
 type Lead = { id: string; first: string; last: string; phone: string; city: string; profile: Profile; animals: Species[]; identification: string; onsite: boolean; game: string; concreteResult: string; score: number; percentage: number; durationSeconds: number; gift: string; metadata: Record<string, unknown>; createdAt: string; sync: "Synchronise" | "En attente" };
 type FormState = { first: string; last: string; phone: string; city: string; profile: Profile; animals: Species[]; identification: string; onsite: boolean };
-type GameId = "scanner" | "theft" | "patient" | "veterinary" | "epidemic";
+type GameId = PriorityGameId;
 type Step = { id: string; label: string; detail: string; points: number; view: "rfid" | "identity" | "health" | "movement" | "registry" | "compare" | "network"; animal?: DemoAnimal; wrong?: boolean };
 
 type Scenario = { id: GameId; adminTitle: string; intro: string; mission: string; profiles: Profile[]; species: Species[]; result: string; lesson: string; withId: string[]; withoutId: string[]; steps: Step[] };
@@ -85,19 +86,18 @@ const scenarios: Scenario[] = [
     ]
   },
   {
-    id: "epidemic", adminTitle: "Stop a l'epidemie", profiles: ["Eleveur", "Veterinaire", "Institution", "Professionnel animal"], species: ["Bovins", "Porcins"],
-    intro: "Alerte sanitaire fictive : l'animal 384 250 000 019 754 a ete signale. Il faut reduire le perimetre d'enquete.",
-    mission: "Ouvrez les lieux relies au parcours, consultez registres marche et transport, puis ciblez les contacts a controler.",
-    result: "18 contacts cibles sur 247 animaux potentiellement concernes", lesson: "La tracabilite permet de passer d'un perimetre large a une liste precise d'animaux a controler.",
-    withId: ["Ferme N'Zi", "TR-042", "Marche de Bouake", "TR-118", "Ferme Akissi", "18 contacts directs"],
-    withoutId: ["247 animaux a verifier", "parcours incertain", "contacts difficiles a prioriser"],
+    id: "herd", adminTitle: "A qui appartient ce troupeau ?", profiles: ["Eleveur", "Institution", "Professionnel animal", "Veterinaire"], species: ["Bovins", "Ovins", "Caprins"],
+    intro: "Trois troupeaux ont ete melanges apres un deplacement. Les animaux se ressemblent et les declarations visuelles ne suffisent plus.",
+    mission: "Scannez chaque animal, comparez son numero aux registres et placez-le dans le bon enclos. Isolez les identites non certifiables.",
+    result: "Troupeau reconstitue a partir des identifiants et des registres", lesson: "Identifier son troupeau permet de rattacher chaque animal au bon registre et de proteger son patrimoine apres un melange.",
+    withId: ["numero unique lu", "registre correspondant retrouve", "exploitation confirmee", "animal classe dans le bon enclos"],
+    withoutId: ["animaux visuellement similaires", "proprietaire non certifiable", "classement incertain", "patrimoine plus difficile a proteger"],
     steps: [
-      { id: "source", label: "Ouvrir la fiche 019754", detail: "Origine Ferme N'Zi. Dernier controle 12/08/2026. Historique exploitable.", points: 18, view: "identity", animal: featuredAnimals.epidemicSource },
-      { id: "move1", label: "Verifier TR-042 puis Marche de Bouake", detail: "04/08 Ferme N'Zi, 08/08 Transport TR-042, 08/08 Marche de Bouake.", points: 20, view: "movement", animal: featuredAnimals.epidemicSource },
-      { id: "park", label: "Isoler le parc partage au marche", detail: "28 bovins au marche, mais seulement 11 ont partage le meme parc.", points: 20, view: "network", animal: featuredAnimals.epidemicSource },
-      { id: "truck", label: "Identifier les animaux du camion TR-118", detail: "Le registre TR-118 contient 6 animaux ayant voyage ensemble.", points: 20, view: "registry", animal: featuredAnimals.epidemicSource },
-      { id: "reduce", label: "Calculer le perimetre final", detail: "247 vers 209 vers 93 vers 31 vers 18 contacts directs.", points: 22, view: "compare", animal: featuredAnimals.epidemicSource },
-      { id: "bad", label: "Ouvrir Ferme C sans passage enregistre", detail: "Aucun passage enregistre ici. Mauvaise piste sans lourde penalite.", points: -6, view: "registry", animal: featuredAnimals.epidemicSource, wrong: true }
+      { id: "registry", label: "Ouvrir les registres", detail: "Ferme des Lagunes, Ferme Traore et Ferme Yao disposent de listes distinctes.", points: 20, view: "registry", animal: featuredAnimals.scannerIdentified },
+      { id: "lagunes", label: "Classer 018543", detail: "Le numero figure dans le registre de la Ferme des Lagunes.", points: 20, view: "rfid", animal: featuredAnimals.scannerIdentified },
+      { id: "traore", label: "Classer 018602", detail: "Le numero figure dans le registre de la Ferme Traore.", points: 20, view: "rfid", animal: featuredAnimals.scannerIdentified },
+      { id: "yao", label: "Classer 018701", detail: "Le numero figure dans le registre de la Ferme Yao.", points: 20, view: "rfid", animal: featuredAnimals.scannerIdentified },
+      { id: "unknown", label: "Isoler l'identite non certifiable", detail: "Aucun signal et boucle illisible : le proprietaire ne peut pas etre certifie.", points: 20, view: "compare", animal: featuredAnimals.scannerUnidentified }
     ]
   }
 ];
@@ -125,7 +125,11 @@ export default function App() {
   useEffect(() => {
     setLeads(storage("vettronic-leads-v2", [] as Lead[]));
     setGifts(storage("vettronic-gifts", baseGifts));
-    setActiveGames(storage("vettronic-games-v2", scenarios.map((s) => s.id)));
+    const savedGames = storage<string[]>("vettronic-games-v2", scenarios.map((s) => s.id));
+    const migratedGames = scenarios.map((s) => s.id).filter((id) => savedGames.includes(id) || (id === "herd" && savedGames.includes("epidemic")));
+    const usableGames = migratedGames.length ? migratedGames : scenarios.map((s) => s.id);
+    setActiveGames(usableGames);
+    localStorage.setItem("vettronic-games-v2", JSON.stringify(usableGames));
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
   }, []);
 
@@ -134,9 +138,9 @@ export default function App() {
   const avg = leads.length ? Math.round(leads.reduce((n, l) => n + l.percentage, 0) / leads.length) : 0;
 
   function chooseScenario() {
-    const priority: GameId[] = form.profile === "Veterinaire" ? ["veterinary", "patient", "epidemic", "scanner", "theft"] : form.profile === "Institution" ? ["patient", "epidemic", "theft", "scanner", "veterinary"] : form.profile === "Eleveur" ? ["theft", "scanner", "epidemic", "patient", "veterinary"] : form.profile === "Etudiant" ? ["veterinary", "scanner", "patient", "epidemic", "theft"] : ["scanner", "veterinary", "patient", "epidemic", "theft"];
+    const priority: GameId[] = form.profile === "Veterinaire" ? ["veterinary", "patient", "scanner", "herd", "theft"] : form.profile === "Institution" ? ["patient", "theft", "herd", "scanner", "veterinary"] : form.profile === "Eleveur" ? ["theft", "herd", "scanner", "patient", "veterinary"] : form.profile === "Etudiant" ? ["veterinary", "scanner", "patient", "herd", "theft"] : ["scanner", "veterinary", "patient", "herd", "theft"];
     const candidates = priority.filter((id) => activeGames.includes(id) && scenarios.find((s) => s.id === id)?.profiles.includes(form.profile));
-    const animalBoost = form.animals.includes("Bovins") ? candidates.find((id) => ["theft", "epidemic", "patient"].includes(id)) : form.animals.includes("Chiens") ? candidates.find((id) => id === "veterinary") : undefined;
+    const animalBoost = form.animals.includes("Bovins") ? candidates.find((id) => ["theft", "herd", "patient"].includes(id)) : form.animals.includes("Chiens") ? candidates.find((id) => id === "veterinary") : form.animals.some((animal) => ["Ovins", "Caprins"].includes(animal)) ? candidates.find((id) => id === "herd") : undefined;
     return animalBoost || candidates[hash(form.first + form.phone) % Math.max(candidates.length, 1)] || "scanner";
   }
 
@@ -159,13 +163,12 @@ export default function App() {
     return { gift: gift.name, nextGifts: gifts.map((g) => g.id === gift.id ? { ...g, stock: Math.max(0, g.stock - 1) } : g) };
   }
 
-  function finishGame() {
-    const done = scenario.steps.filter((s) => selected.includes(s.id));
-    const score = Math.max(0, Math.min(100, done.reduce((n, s) => n + s.points, 0)));
-    const durationSeconds = Math.max(1, Math.round((Date.now() - startedAt) / 1000));
+  function finishGame(payload: { score: number; durationSeconds: number; actions: string[] }) {
+    const score = payload.score;
+    const durationSeconds = payload.durationSeconds;
     const giftResult = chooseGift(score);
     persistGifts(giftResult.nextGifts);
-    const lead: Lead = { id: crypto.randomUUID(), ...form, game: scenario.adminTitle, concreteResult: scenario.result, score, percentage: score, durationSeconds, gift: giftResult.gift, metadata: { gameId: scenario.id, completed: true, actions: selected, result: { gameId: scenario.id, score, maxScore: 100, percentage: score, durationSeconds, completed: true } }, createdAt: new Date().toISOString(), sync: navigator.onLine ? "Synchronise" : "En attente" };
+    const lead: Lead = { id: crypto.randomUUID(), ...form, game: scenario.adminTitle, concreteResult: scenario.result, score, percentage: score, durationSeconds, gift: giftResult.gift, metadata: { gameId: scenario.id, completed: true, actions: payload.actions, result: { gameId: scenario.id, score, maxScore: 100, percentage: score, durationSeconds, completed: true } }, createdAt: new Date().toISOString(), sync: navigator.onLine ? "Synchronise" : "En attente" };
     const next = [lead, ...leads];
     setLeads(next);
     localStorage.setItem("vettronic-leads-v2", JSON.stringify(next));
@@ -180,7 +183,7 @@ export default function App() {
 
   if (screen === "admin") return <main className="min-h-screen bg-field p-4 md:p-6"><Top go={() => setScreen("home")} /><section className="mx-auto max-w-7xl"><HeroTitle label="Administration" title="Pilotage SELAB" text="Les jeux refondus utilisent de vrais dossiers fictifs, des numeros proches, des registres et des donnees sanitaires." /><Tabs tab={tab} setTab={setTab} />{tab === "dashboard" && <><div className="grid grid-cols-4 gap-3 grid2"><Stat k="Participants" v={leads.length} /><Stat k="Lots remis" v={wins} /><Stat k="Score moyen" v={avg + "%"} /><Stat k="Animaux demo" v={demoAnimals.length} /></div><StockSummary gifts={gifts} /></>}{tab === "leads" && <><button onClick={exportCsv} className="tap mb-4 rounded bg-tech px-5 py-3 font-black text-white">Exporter CSV</button><LeadTable leads={leads} /></>}{tab === "games" && <GameAdmin active={activeGames} setActive={persistGames} />}{tab === "lots" && <GiftManager gifts={gifts} setGifts={persistGifts} />}{tab === "data" && <DatasetView />}</section></main>;
   if (screen === "intro") return <main className="min-h-screen bg-field p-4 md:p-6"><section className="mx-auto grid max-w-5xl grid-cols-[.9fr_1.1fr] gap-5 grid2"><SpeciesImg species={scenario.species[0]} className="h-full min-h-[420px] w-full rounded object-cover shadow" /><div className="grid content-center rounded bg-white p-6 shadow"><img src="/branding/logo.png" alt="Vet'Tronic" className="mb-6 h-20 object-contain" /><p className="font-black text-tech">Mission personnalisee</p><h1 className="mt-2 text-5xl font-black">Mission Vet'Tronic</h1><p className="mt-5 text-xl text-ink/75">{scenario.intro}</p><p className="mt-4 rounded bg-field p-4 font-bold">{scenario.mission}</p><button onClick={startGame} className="tap mt-6 rounded bg-tech px-6 py-5 text-2xl font-black text-white">Commencer</button></div></section></main>;
-  if (screen === "game") return <GameScreen scenario={scenario} selected={selected} detail={detail} feedback={feedback} playStep={playStep} finish={finishGame} />;
+  if (screen === "game") return <GameExperience gameId={scenario.id} title={scenario.adminTitle} mission={scenario.mission} onFinish={finishGame} />;
   if (screen === "reward") { const last = leads[0]; return <main className="grid min-h-screen place-items-center bg-field p-5"><section className="max-w-3xl overflow-hidden rounded bg-white shadow"><SpeciesImg species={scenario.species[0]} className="h-56 w-full object-cover" /><div className="p-7"><img src="/branding/logo.png" className="mx-auto h-20 object-contain" alt="Vet'Tronic" /><h1 className="mt-4 text-center text-3xl font-black">{scenario.result}</h1><p className="mt-3 text-center text-2xl font-black text-tech">Score {last?.percentage}% - Lot : {last?.gift}</p><Compare withId={scenario.withId} withoutId={scenario.withoutId} /><p className="mt-4 rounded bg-field p-4 font-bold text-tech">{scenario.lesson}</p><button onClick={() => { setForm(emptyForm); setStep(0); setScreen("home"); }} className="tap mt-6 w-full rounded bg-tech px-6 py-4 font-black text-white">Nouveau participant</button></div></section></main>; }
   if (screen === "form") return <FormScreen step={step} setStep={setStep} form={form} setForm={setForm} start={prepareGame} />;
   return <Home start={() => setScreen("form")} admin={() => setScreen("admin")} />;
@@ -216,3 +219,4 @@ function Top({ go }: { go: () => void }) { return <button onClick={go} className
 function Input({ p, v, f }: { p: string; v: string; f: (v: string) => void }) { return <label className="grid gap-1 font-bold">{p}<input value={v} onChange={(e) => f(e.target.value)} className="tap rounded border px-3" /></label>; }
 function Stat({ k, v }: { k: string; v: number | string }) { return <div className="rounded bg-white p-4 shadow"><p className="font-bold text-ink/60">{k}</p><p className="text-3xl font-black text-tech">{v}</p></div>; }
 function HeroTitle({ label, title, text }: { label: string; title: string; text: string }) { return <div className="mb-5"><p className="font-black text-tech">{label}</p><h1 className="text-4xl font-black">{title}</h1><p className="mt-2 max-w-2xl text-ink/70">{text}</p></div>; }
+
